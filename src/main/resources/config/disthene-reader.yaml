@@ -1,0 +1,31 @@
+reader:
+  bind: "0.0.0.0"
+  port: 8080
+  rollups:
+    - 60s:2592000s
+store:
+  cluster:
+    - "10.10.5.192"
+    - "10.10.5.191"
+  port: 9042
+  keyspace: 'metric'
+  columnFamily: 'metric'
+  maxConnections: 512
+  readTimeout: 10
+  connectTimeout: 10
+  maxRequests: 128
+index:
+  name: "graylog2"
+  cluster:
+    - "10.10.68.243"
+  port: 9300
+  index: "disthene"
+  timeout: 10
+  scroll: 10
+  maxPaths: 10000
+stats:
+  interval: 60
+  tenant: "NONE"
+  hostname: "127.0.0.1"
+  carbonHost: "webmonitor.coupang.net"
+  carbonPort: 2003

@@ -1,15 +1,11 @@
 package net.iponweb.disthene.reader.service.store;
 
 import com.datastax.driver.core.*;
-import com.datastax.driver.core.policies.DCAwareRoundRobinPolicy;
-import com.datastax.driver.core.policies.TokenAwarePolicy;
-import com.datastax.driver.core.policies.WhiteListPolicy;
+import com.datastax.driver.core.policies.RoundRobinPolicy;
 import net.iponweb.disthene.reader.config.StoreConfiguration;
 import org.apache.log4j.Logger;
 
-import java.net.InetSocketAddress;
 import java.util.Collection;
-import java.util.Collections;
 
 /**
  * @author Andrei Ivanov
@@ -24,8 +20,8 @@ public class CassandraService {
 
     public CassandraService(StoreConfiguration storeConfiguration) {
         String query = "SELECT time, data FROM " +
-                            storeConfiguration.getKeyspace() + "." + storeConfiguration.getColumnFamily() +
-                            " where path = ? and tenant = ? and period = ? and rollup = ? and time >= ? and time <= ? order by time";
+                storeConfiguration.getKeyspace() + "." + storeConfiguration.getColumnFamily() +
+                " WHERE path = ? AND tenant = ? AND period = ? AND rollup = ? AND time >= ? AND time <= ? ORDER BY time";
 
         SocketOptions socketOptions = new SocketOptions()
                 .setReceiveBufferSize(1024 * 1024)
@@ -34,23 +30,22 @@ public class CassandraService {
                 .setReadTimeoutMillis((int) (storeConfiguration.getReadTimeout() * 1000))
                 .setConnectTimeoutMillis((int) (storeConfiguration.getConnectTimeout() * 1000));
 
-        PoolingOptions poolingOptions = new PoolingOptions();
-        poolingOptions.setMaxConnectionsPerHost(HostDistance.LOCAL, storeConfiguration.getMaxConnections());
-        poolingOptions.setMaxConnectionsPerHost(HostDistance.REMOTE, storeConfiguration.getMaxConnections());
-        poolingOptions.setMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE, storeConfiguration.getMaxRequests());
-        poolingOptions.setMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL, storeConfiguration.getMaxRequests());
+        PoolingOptions poolingOptions = new PoolingOptions().setConnectionsPerHost(HostDistance.LOCAL, storeConfiguration.getMaxConnections(), storeConfiguration.getMaxConnections())
+                .setConnectionsPerHost(HostDistance.REMOTE, storeConfiguration.getMaxConnections(), storeConfiguration.getMaxConnections())
+                .setMaxRequestsPerConnection(HostDistance.LOCAL, storeConfiguration.getMaxRequests())
+                .setMaxRequestsPerConnection(HostDistance.REMOTE, storeConfiguration.getMaxRequests())
+                .setPoolTimeoutMillis(0);
 
         Cluster.Builder builder = Cluster.builder()
                 .withSocketOptions(socketOptions)
                 .withCompression(ProtocolOptions.Compression.LZ4)
-                .withLoadBalancingPolicy(new TokenAwarePolicy(new DCAwareRoundRobinPolicy()))
-//                .withLoadBalancingPolicy(new WhiteListPolicy(new DCAwareRoundRobinPolicy(), Collections.singletonList(new InetSocketAddress("cassandra", 9042))))
+                .withLoadBalancingPolicy(new RoundRobinPolicy())
                 .withPoolingOptions(poolingOptions)
                 .withQueryOptions(new QueryOptions().setConsistencyLevel(ConsistencyLevel.ONE))
-                .withProtocolVersion(ProtocolVersion.V2)
+                .withProtocolVersion(ProtocolVersion.V3)
                 .withPort(storeConfiguration.getPort());
 
-        if ( storeConfiguration.getUserName() != null && storeConfiguration.getUserPassword() != null) {
+        if (storeConfiguration.getUserName() != null && storeConfiguration.getUserPassword() != null) {
             builder = builder.withCredentials(storeConfiguration.getUserName(), storeConfiguration.getUserPassword());
         }
 
@@ -60,9 +55,9 @@ public class CassandraService {
 
         cluster = builder.build();
         Metadata metadata = cluster.getMetadata();
-        logger.debug("Connected to cluster: " + metadata.getClusterName());
+        logger.info("Connected to cluster: " + metadata.getClusterName());
         for (Host host : metadata.getAllHosts()) {
-            logger.debug(String.format("Datacenter: %s; Host: %s; Rack: %s", host.getDatacenter(), host.getAddress(), host.getRack()));
+            logger.info(String.format("Datacenter: %s; Host: %s; Rack: %s", host.getDatacenter(), host.getAddress(), host.getRack()));
         }
 
         session = cluster.connect();
@@ -91,7 +86,7 @@ public class CassandraService {
     private int getInFlightQueries(Session.State state) {
         int result = 0;
         Collection<Host> hosts = state.getConnectedHosts();
-        for(Host host : hosts) {
+        for (Host host : hosts) {
             result += state.getInFlightQueries(host);
         }
 

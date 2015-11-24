@@ -11,7 +11,6 @@ import net.iponweb.disthene.reader.service.store.CassandraService;
 import net.iponweb.disthene.reader.service.throttling.ThrottlingService;
 import org.apache.commons.cli.*;
 import org.apache.log4j.Logger;
-import org.joda.time.DateTime;
 import org.yaml.snakeyaml.Yaml;
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
@@ -21,8 +20,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.List;
-import java.util.Map;
 
 /**
  * @author Andrei Ivanov
@@ -58,18 +55,19 @@ public class DistheneReader {
     private void run() {
         try {
             Yaml yaml = new Yaml();
-            InputStream in = Files.newInputStream(Paths.get(configLocation));
-            DistheneReaderConfiguration distheneReaderConfiguration = yaml.loadAs(in, DistheneReaderConfiguration.class);
-            in.close();
+            DistheneReaderConfiguration distheneReaderConfiguration;
+            try (InputStream in = Files.newInputStream(Paths.get(configLocation))) {
+                distheneReaderConfiguration = yaml.loadAs(in, DistheneReaderConfiguration.class);
+            }
             logger.info("Running with the following config: " + distheneReaderConfiguration.toString());
 
             ThrottlingConfiguration throttlingConfiguration;
             File file = new File(throttlingConfigLocation);
             if(file.exists() && !file.isDirectory()) {
                 logger.info("Loading throttling rules");
-                in = Files.newInputStream(Paths.get(throttlingConfigLocation));
-                throttlingConfiguration = yaml.loadAs(in, ThrottlingConfiguration.class);
-                in.close();
+                try (InputStream in = Files.newInputStream(Paths.get(throttlingConfigLocation))) {
+                    throttlingConfiguration = yaml.loadAs(in, ThrottlingConfiguration.class);
+                }
             } else {
                 throttlingConfiguration = new ThrottlingConfiguration();
             }
@@ -116,8 +114,8 @@ public class DistheneReader {
             logger.info("Starting reader");
             readerServer.run();
 
-            Signal.handle(new Signal("TERM"), new SigtermSignalHandler());
-            Signal.handle(new Signal("HUP"), new SighupSignalHandler());
+//            Signal.handle(new Signal("TERM"), new SigtermSignalHandler());
+//            Signal.handle(new Signal("HUP"), new SighupSignalHandler());
         } catch (IOException e) {
             logger.error(e);
         } catch (InterruptedException e) {
