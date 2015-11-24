@@ -43,7 +43,7 @@ public class IndexService {
 
     public List<String> getPaths(String tenant, List<String> wildcards) {
         List<String> regExs = new ArrayList<>();
-        for(String wildcard : wildcards) {
+        for (String wildcard : wildcards) {
             regExs.add(WildcardUtil.getPathsRegExFromWildcard(wildcard));
         }
         String regEx = Joiner.on("|").skipNulls().join(regExs);
@@ -53,7 +53,8 @@ public class IndexService {
         SearchResponse response = client.prepareSearch(indexConfiguration.getIndex())
                 .setScroll(new TimeValue(indexConfiguration.getTimeout()))
                 .setSize(indexConfiguration.getScroll())
-                .setQuery(QueryBuilders.filteredQuery(QueryBuilders.regexpQuery("path", regEx),
+                .setQuery(QueryBuilders.filteredQuery(
+                        QueryBuilders.regexpQuery("path", regEx),
                         FilterBuilders.termFilter("tenant", tenant)))
                 .addField("path")
                 .execute().actionGet();
