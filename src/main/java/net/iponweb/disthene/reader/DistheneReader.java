@@ -114,8 +114,8 @@ public class DistheneReader {
             logger.info("Starting reader");
             readerServer.run();
 
-//            Signal.handle(new Signal("TERM"), new SigtermSignalHandler());
-//            Signal.handle(new Signal("HUP"), new SighupSignalHandler());
+            Signal.handle(new Signal("TERM"), new SigtermSignalHandler());
+            Signal.handle(new Signal("HUP"), new SighupSignalHandler());
         } catch (IOException e) {
             logger.error(e);
         } catch (InterruptedException e) {

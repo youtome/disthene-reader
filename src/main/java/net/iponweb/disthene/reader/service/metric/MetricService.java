@@ -38,13 +38,15 @@ public class MetricService {
 
     private DistheneReaderConfiguration distheneReaderConfiguration;
 
-    private ExecutorService executorService = MoreExecutors.listeningDecorator(Executors.newCachedThreadPool());
+    private ExecutorService executorService;
 
     public MetricService(IndexService indexService, CassandraService cassandraService, StatsService statsService, DistheneReaderConfiguration distheneReaderConfiguration) {
         this.indexService = indexService;
         this.cassandraService = cassandraService;
         this.distheneReaderConfiguration = distheneReaderConfiguration;
         this.statsService = statsService;
+
+        executorService = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(distheneReaderConfiguration.getStore().getMaxRequests()));
     }
 
     public String getMetricsAsJson(String tenant, List<String> wildcards, long from, long to) throws ExecutionException, InterruptedException {
